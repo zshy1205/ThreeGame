@@ -168,18 +168,25 @@ void creat_Tree(queue<ChessBoard*> &qu_chess,ChessBoard &now,int layer=4) {
 			qu_chess.pop();
 		}
 		int n = live->where_is_void(where);		  	//可放棋子位置与个数
+		//cout<<"######"<<n<<endl;
 		for(int j=0;j<n;j++) {
 			ChessBoard *child = new ChessBoard();
 			(*child) = (*live);
 			child->put(where[j]/(child->cols),where[j]%(child->cols),(live->max_player));
 			child->father = live;
 			live->put_child(child);
-			qu_chess.push(child);			//孩子待扩展
+			if(child->who_win() == 0)//如果当前棋盘未结束，则孩子待扩展
+                qu_chess.push(child);
+            else if(child->who_win() == 1)//如果已经获胜或者输了则此节点不必再拓展
+                child->value = MAX_INT;
+            else
+                child->value = MIN_INT;
 		}
 	}
 }
 
 void dispose_tree(ChessBoard *node) {
+
 	//释放node的搜索树 (except node )
 	if(node->childs == NULL) return ;
 	else {
@@ -205,7 +212,7 @@ int minmax_recu(ChessBoard *node,int depth,bool max_player) {
 		while(tmp) {						   	//所有孩子取最大
 			tmp->value = minmax_recu(tmp,depth-1,false);
 			bestval = max<int>(bestval,tmp->value);
-			cout<<"max_palyer_bestval:"<<bestval<<endl;
+			//cout<<"max_palyer_bestval:"<<bestval<<endl;
 			tmp = tmp->next_borther;
 		}
 		return bestval;
@@ -215,7 +222,7 @@ int minmax_recu(ChessBoard *node,int depth,bool max_player) {
 		while(tmp) {						   //所有孩子取最小
 			tmp->value = minmax_recu(tmp,depth-1,true);
 			bestval = min<int>(bestval,tmp->value);
-			cout<<"min_palyer_bestval:"<<bestval<<endl;
+			//cout<<"min_palyer_bestval:"<<bestval<<endl;
 			tmp = tmp->next_borther;
 		}
 		return bestval;
@@ -232,8 +239,20 @@ void MAX_MIN_search(ChessBoard &now_node,int &row,int &col) {
 
 	//反向极大极小推理，得到目标步骤
 	now_node.value = minmax_recu(&now_node,2,now_node.max_player);
+/*
+    ChessBoard *flag = now_node.childs;
+    cout<<flag->value<<endl;
+    flag->show();
+    flag = flag->next_borther;
 
-	cout<<"now_node.value: "<<now_node.value<<endl;
+    while(flag != NULL)
+    {
+        cout<<flag->value<<endl;
+        flag->show();
+        flag = flag->next_borther;
+    }
+
+	cout<<"now_node.value: "<<now_node.value<<endl;*/
 	ChessBoard *tmp = now_node.childs->childs;
 
 	tmp = now_node.childs;
@@ -247,6 +266,7 @@ void MAX_MIN_search(ChessBoard &now_node,int &row,int &col) {
 
 	//销毁搜索树
 	dispose_tree(&now_node);
+	now_node.childs = now_node.next_borther = NULL;
 
 }
 
@@ -260,33 +280,48 @@ int main() {
 	//其次，在搜索中若一定会出现平局或者最终根本赢不了时,
 	//这里给出的中间步骤无参考性。
 	ChessBoard p;
+	ChessBoard p2;
 	int next_row=0,next_col=0;
 	//设置初态
 
-	p.put(2,2,true);
+	int flag = true;
+	int size = p.rows*p.cols;
+	int where[size];
+	while(p.who_win() == 0 && p.where_is_void(where) > 0 && p2.where_is_void(where) > 0)
+    {
+        if(flag)
+        {
+            MAX_MIN_search(p, next_row, next_col);
+            p.put(next_row, next_col, true);
+            p2.put(next_row, next_col, false);
+        }
+        else
+        {
+            cout<<"*"<<endl;
+            MAX_MIN_search(p2, next_row, next_col);
+            p2.put(next_row, next_col, true);
+            p.put(next_row, next_col, false);
+            cout<<"##"<<endl;
+        }
+        flag = !flag;
+        cout<<p.value<<endl;
+        p.show();
+    }
+/*
+    p.put(0,0,true);
+    p.put(1,1,false);
+    MAX_MIN_search(p,next_row,next_col);
+	p.put(next_row,next_col,true);
+	p.show();
+
 	p.put(0,2,false);
-
-
-	MAX_MIN_search(p,next_row,next_col);
-	//cout<<next_row<<"  "<<next_col<<endl;
+    MAX_MIN_search(p,next_row,next_col);
+    cout<<"###########################"<<endl;
 	p.put(next_row,next_col,true);
 	p.show();
+	*/
 
-	p.put(0,0,false);
-	p.show();
 
-	MAX_MIN_search(p,next_row,next_col);
-	cout<<next_row<<"  "<<next_col<<endl;
-	p.put(next_row,next_col,true);
-	p.show();
-
-cout<<"#######################################"<<endl;
-	p.put(1,0,false);
-
-	MAX_MIN_search(p,next_row,next_col);
-	cout<<next_row<<"  "<<next_col<<endl;
-	p.put(next_row,next_col,true);
-	p.show();
 
 	return 0;
 }
